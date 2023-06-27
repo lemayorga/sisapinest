@@ -1,0 +1,152 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema", "clientExtensions"]
+  
+  //  output   = "../src/generated/client" // https://www.prisma.io/docs/concepts/components/prisma-client/working-with-prismaclient/generating-prisma-client
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["commun", "security"]
+}
+
+
+// ################# Init Schema: Security #########################
+model SecurityRole {
+  id   Int    @id @default(autoincrement())
+  codeRole  String  @db.VarChar(80) @unique @map("code_access")
+  name String @unique @db.VarChar(80)
+  isActive Boolean @default(true) @map(name: "is_active")
+  accessOnRol SecurityAccessOnRol[] 
+  rolOnUser SecurityUserOnRol[] 
+
+  @@map("role")
+  @@schema("security")
+}
+
+model SecurityModule {
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(80)
+
+  @@map("module")
+  @@schema("security")
+}
+
+model SecurityAccess {
+  id   Int    @id @default(autoincrement())
+  codeAccess  String  @db.VarChar(80) @unique @map("code_access")
+  description String?  @db.VarChar(150)
+  accessOnRol SecurityAccessOnRol[] 
+
+  @@map("access")
+  @@schema("security")
+}
+
+model SecurityAccessOnRol {
+  rolId  Int 
+  accessId  Int 
+  isActive Boolean @default(true) @map(name: "is_active")
+  assignedAt DateTime @default(now())
+  assignedBy String?
+  role    SecurityRole  @relation(fields: [rolId], references: [id])
+  access SecurityAccess  @relation(fields: [accessId], references: [id])
+
+  @@unique([rolId, accessId])
+  @@index([rolId, accessId])
+
+  @@map("access_on_rol")
+  @@schema("security")
+}
+
+model SecurityUser {
+  id   String       @id @default(uuid())
+  username String @unique @db.VarChar(60)
+  password String  @db.VarChar(60)
+  email String  @unique  @db.VarChar(60)
+  isActive Boolean @default(true) @map(name: "is_active")
+  emailVerified   DateTime? @map(name: "email_verified")
+  userOnRol SecurityUserOnRol[] 
+  person CommunPerson?
+
+  @@map("user")
+  @@schema("security")
+}
+
+model SecurityUserOnRol {
+  rolId  Int 
+  userId  String 
+  isActive Boolean @default(true) @map(name: "is_active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  assignedBy String?
+  role   SecurityRole  @relation(fields: [rolId], references: [id])
+  user SecurityUser  @relation(fields: [userId], references: [id])
+
+
+  @@unique([rolId, userId])
+  @@index([rolId, userId])
+
+  @@map("user_on_rol")
+  @@schema("security")
+}
+
+// #################  End Schema: Security #########################
+
+// ################# Init Schema: Commub #########################
+
+
+model CommunCatalogue {
+  id   Int    @id @default(autoincrement())
+  group String @db.VarChar(80)
+  value String @db.VarChar(80)
+  isActive Boolean @default(true) @map(name: "is_active")
+  description String?  @db.VarChar(150)
+
+  personDataCommun CommunDataPerson[]
+
+  @@map("catalogue")
+  @@schema("commun")
+}
+
+model CommunCompany {
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(150)
+  isActive Boolean @default(true) @map(name: "is_active")
+  companySuccessorId Int?  
+ // companySuccessor  CommunCompany?   @relation("BlogOwnerHistory", fields: [companySuccessorId], references: [id])
+
+  @@map("company")
+  @@schema("commun")
+}
+
+model CommunPerson {
+  id   Int    @id @default(autoincrement())
+  firstName String  @db.VarChar(80) @map(name: "firstname")
+  lastName String?  @db.VarChar(80) @map(name: "lastname")
+  isActive Boolean @default(true)  @map(name: "is_active")
+  email String  @unique  @db.VarChar(60)
+  userId String   @unique 
+  user SecurityUser  @relation(fields: [userId], references: [id])
+  dataCommun CommunDataPerson[] 
+
+  @@map("person")
+  @@schema("commun")
+}
+
+model CommunDataPerson {
+  id   Int    @id @default(autoincrement())
+  personId  Int  @map("person_id") 
+  catalogueId  Int  @map("catalogue_id") 
+  value String  @db.VarChar(250)
+  isActive Boolean @default(true)  @map(name: "is_active")
+  isMain Boolean @default(false) @map(name: "is_main")
+  catalogue CommunCatalogue  @relation(fields: [catalogueId], references: [id])
+  person CommunPerson  @relation(fields: [personId], references: [id])
+
+  @@map("data_person")
+  @@schema("commun")
+}
+
+
+// #################  End Schema: Commun #########################
